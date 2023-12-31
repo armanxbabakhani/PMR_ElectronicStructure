@@ -26,10 +26,19 @@ void Print_matrix(const vector<vector<T>>& matrix) {
     cout << "Printing Matrix ...  " << endl;
     for (int i = 0; i < m; i++) {
         for (int j = 0; j < matrix[i].size(); j++) {
-            cout << matrix[i][j] << " ";
+            cout << matrix[i][j] << "  ";
         }
         cout << endl;
     }
+}
+
+pair<bool , int> Find_number(int Num , vector<int> NumVec){
+    for(int i = 0; i < NumVec.size() ; i++){
+        if(NumVec[i] == Num){
+            return {true , i};
+        }
+    }
+    return {false , 0};
 }
 
 double Sort_permute(vector<int> Vec){
@@ -39,7 +48,7 @@ double Sort_permute(vector<int> Vec){
     sort(VecSorted.begin() , VecSorted.end());
 
     for(int i = 0 ; i < n-1; ++i){
-        for(int j=i+1; j < n; ++j){
+        for(int j=i; j < n; ++j){
             if(Vec[i] > VecSorted[j]){
                 permfactor = permfactor*(-1.0);
             }
@@ -120,10 +129,17 @@ pair<bool , int> Perm_found(vector<double> v , CrAnOps Vs){
 }
 
 complex<double> Read_coeff(const string complexStr){
-    int plusPos = -1 , minPos = -1 , iPos = -1;
+    int plusPos = -1 , minPos = -1 , iPos = -1 ;
     plusPos = complexStr.find('+');
     minPos = complexStr.find('-');
     iPos = complexStr.find('j');
+
+    // Determine whether the string only starts with a minus sign or there's a minus in the middle of the string
+    if(minPos == 0){
+        minPos = -1;
+        minPos = complexStr.substr(1 , complexStr.size()).find('-');
+        minPos += 1;
+    }
 
     string realPartStr , imagPartStr;
 
@@ -131,6 +147,10 @@ complex<double> Read_coeff(const string complexStr){
         if(plusPos != -1){
             realPartStr = complexStr.substr(0, plusPos);
             imagPartStr = complexStr.substr(plusPos + 1, iPos - plusPos);
+        }
+        else if(minPos == 0){
+            realPartStr = '0';
+            imagPartStr = complexStr.substr(0 , iPos);
         }
         else if(minPos > 0){
             realPartStr = complexStr.substr(0, minPos);
@@ -193,7 +213,7 @@ DPdataElec Data_to_Perms(const string& filename){
     inputFile.open(filename);
     while(getline(inputFile, line)){
         vector<double> perm(NumOfParticles+1 , 0.0);
-        vector<int> diagonal;
+        vector<int> diagonal = {};
         int number;
         istringstream iss(line);
         vector<int> CrString = {}, AnString = {};
@@ -201,7 +221,7 @@ DPdataElec Data_to_Perms(const string& filename){
         complex<double> coeff = Read_coeff(tokens[0]);
         for(int i=1; i < tokens.size()-1; i++){
             // Determining whether dagger or not:
-            double creation = 1.0;
+            double creation = 1.0 , Anfactor = 1.0 , Crfactor = 1.0;
             size_t pos = -1;
             pos = tokens[i].rfind('^');
             
@@ -213,16 +233,23 @@ DPdataElec Data_to_Perms(const string& filename){
             }
             if(pos == -1){
                 creation = -1.0;
-                AnString.push_back(number);
+                pair<bool , int> Anfound = Find_number(number, CrString);
+                // Finding a diagonal term and accounting for the permutation factor for bringing together a n_i = c^_i c_i .
+                if(Anfound.first){
+                    Anfactor = Anfactor*pow(-1.0 , CrString.size() + AnString.size() - Anfound.second - 1);
+                    diagonal.push_back(number);
+                    CrString.erase(CrString.begin() + Anfound.second);
+                }
+                else{
+                    AnString.push_back(number);
+                }
             }
             else{
-                coeff = coeff * pow(-1.0 , AnString.size());
+                Crfactor = pow(-1.0 , AnString.size());
                 CrString.push_back(number);
             }
             perm[number] += creation;
-            if(abs(perm[number]) < 1E-6){
-                diagonal.push_back(number);
-            }
+            coeff = coeff*Crfactor*Anfactor;
         }
         coeff = coeff * Sort_permute(CrString) * Sort_permute(AnString);
 
@@ -266,6 +293,7 @@ DPdataElec Data_to_Perms(const string& filename){
 
 int main(int argc , char* argv[]) {
     vector<vector<double>> PermMatrix;
+    vector<NumberOps> Diags;
     vector<vector<complex<double>>> Cs;
     DPdataElec ElecData;
 
@@ -273,12 +301,20 @@ int main(int argc , char* argv[]) {
     ElecData = Data_to_Perms(filename);
 
     PermMatrix = Transpose(ElecData.Permutations);
+    Diags = ElecData.Diagonals;
     Cs = ElecData.Coeffs;
     vector<vector<int>> Cycles = Nullspace(PermMatrix);
 
     cout << endl;
     cout << "The permutations are: "  << endl;
     Print_matrix(PermMatrix);
+    cout << endl;
+
+    cout << "The diagonals are: "  << endl;
+    for(int i=0; i < Diags.size(); ++i){
+        cout << "Diag_" << i << " is " << endl;
+        Print_matrix(Diags[i]);
+    }
     cout << endl;
 
     cout << "The coefficients are: " << endl;
