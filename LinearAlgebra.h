@@ -148,7 +148,6 @@ vector<vector<int>> Nullspace(vector<vector<double>> A) {
 
     for(int i = 0; i < nullspace.size() ; i++){
         if(CheckOnes(nullspace[i])){
-            cout << "Inside the checkones!! " << endl;
             vector<int> nullint(nullspace[i].begin() , nullspace[i].end());
             nullspaceInt.push_back(nullint);
         }

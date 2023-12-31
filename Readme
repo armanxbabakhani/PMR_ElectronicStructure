@@ -1,0 +1,5 @@
+The assumptions about the input file:
+1- If there are any creation and annihilation of the same particle label, they come in the form of a number operator
+
+The format of permutations saved (not relevant to the user):
+- The permutations are always kept in the form where all creation operators appear first. For example, c_1 c_2^ will be kept as c_2^ c_1 and automatically a factor of minus one will be accounted for in the coefficient.
