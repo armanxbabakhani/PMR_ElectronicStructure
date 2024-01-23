@@ -23,7 +23,6 @@ struct DPdataElec{
 template<typename T>
 void Print_matrix(const vector<vector<T>>& matrix) {
     int m = matrix.size();
-    cout << "Printing Matrix ...  " << endl;
     for (int i = 0; i < m; i++) {
         for (int j = 0; j < matrix[i].size(); j++) {
             cout << matrix[i][j] << "  ";
@@ -201,7 +200,7 @@ DPdataElec Data_to_Perms(const string& filename){
             }
             else{
                 number = stoi(tokens[i]);
-                if(stoi(tokens[i]) > NumOfParticles){
+                if(number > NumOfParticles){
                     NumOfParticles = stoi(tokens[i]);
                 }
             }
@@ -293,6 +292,7 @@ DPdataElec Data_to_Perms(const string& filename){
 
 int main(int argc , char* argv[]) {
     vector<vector<double>> PermMatrix;
+    NumberOps D0;
     vector<NumberOps> Diags;
     vector<vector<complex<double>>> Cs;
     DPdataElec ElecData;
@@ -303,6 +303,8 @@ int main(int argc , char* argv[]) {
     PermMatrix = Transpose(ElecData.Permutations);
     Diags = ElecData.Diagonals;
     Cs = ElecData.Coeffs;
+    D0 = ElecData.D0;
+    vector<complex<double>> C0 = ElecData.Coeffs0;
     vector<vector<int>> Cycles = Nullspace(PermMatrix);
 
     cout << endl;
@@ -321,9 +323,45 @@ int main(int argc , char* argv[]) {
     Print_matrix(Cs);
     cout << endl;
 
+    cout << "The purely diagonal terms are: " << endl;
+    Print_matrix(D0);
+    cout << endl;
+
+    cout << "The coefficient for the purely diagonal are: " << endl;
+    for(int i = 0; i < C0.size(); ++i){
+        cout << C0[i] << endl;
+    }
+    cout << endl;
 
     cout << "The cycles are: " << endl;
     Print_matrix(Cycles);
 
+    /*cout << endl;
+    int count = 0;
+    for(int i = 0; i < Cycles[2].size(); ++i){
+        int no = Cycles[i][4];
+        if(abs(no) > 1E-3){
+            count++;
+            cout << "The index is " << i << endl;
+        }
+        cout << no << endl;
+    }*/
+
+   // cout << "The count of non-zeros is: " << count << endl;
+
+    /*cout << "Printing the cycle 12 13 and 17: " << endl;
+    for(int i = 0; i < Cycles.size(); ++i){
+        int no = Cycles[i][4];
+        if(abs(no) > 1E-3){
+            count++;
+            cout << "The index is " << i << endl;
+        }
+        cout << no << endl;
+    }
+    cout << "Here are the cycles: " << endl;*/
+
+    /*for(int i=0; i < PermMatrix.size(); i++){
+        cout << PermMatrix[i][12] << "    " << PermMatrix[i][13] << "    " << PermMatrix[i][17] << endl;
+    }*/
     return 0;
 }

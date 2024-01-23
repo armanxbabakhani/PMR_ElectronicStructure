@@ -2,50 +2,52 @@
 #include <vector>
 
 using namespace std;
-// Function to perform Gaussian elimination with back-substitution
-void Gauss_Elim(vector<vector<double>>& matrix) {
-    int rows = matrix.size();
-    int cols = matrix[0].size();
 
-    for (int i = 0; i < cols; ++i) {
-        // Find pivot row
-        int pivotRow = -1, lead;
-        for (int j = i; j < rows; ++j) {
-            if (matrix[j][i] != 0) {
-                pivotRow = j;
-                lead = i;
-                break;
-            }
+template<typename T>
+void Print_Matrix(const vector<vector<T>>& matrix) {
+    int m = matrix.size();
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < matrix[i].size(); j++) {
+            cout << matrix[i][j] << "  ";
         }
+        cout << endl;
+    }
+}
 
-        // If no pivot found, continue to the next column
-        if (pivotRow == -1) {
-            continue;
+void Gauss_Elim(vector<vector<double>>& A) {
+    int rowsA = A.size() , colsA = A[0].size() , lead = 0;
+
+    for (int r = 0; r < rowsA; r++) {
+        if (lead >= colsA) {
+            break;
         }
-
-        /*
-        for(int k = 0; k < cols; k++){
-            matrix[i][k] = matrix[i][k]/matrix[i][i];
-        }*/
-
-        // Swap rows to make the pivot element non-zero
-        swap(matrix[i], matrix[pivotRow]);
-
-        // Eliminate other rows
-        for (int j = 0; j < rows; ++j) {
-            if (j != i && matrix[j][i] != 0) {
-                double factor = matrix[j][i] / matrix[i][i];
-                for (int k = i; k < cols; ++k) {
-                    matrix[j][k] -= factor * matrix[i][k];
+        int i = r;
+        while (A[i][lead] == 0) {
+            i++;
+            if (i == rowsA) {
+                i = r;
+                lead++;
+                if (lead == colsA) {
+                    return;
                 }
             }
         }
-        double factor = matrix[i][i];
-        if(factor != 0){
-            for(int k = i; k < cols; k++){
-                matrix[i][k] = matrix[i][k]/factor;
+        
+        swap(A[i], A[r]);
+
+        int lv = A[r][lead]; // Multiplier is the number that multiplies the leading term to 1.
+        for (int j = 0; j < colsA; j++) {
+            A[r][j] = A[r][j]/lv;
+        }
+        for (int i = 0; i < rowsA; i++) {
+            if (i != r) {
+                int lv2 = A[i][lead];
+                for (int j = 0; j < colsA; j++) {
+                    A[i][j] -= (A[r][j] * lv2);
+                }
             }
         }
+        lead++;
     }
 }
 
@@ -112,6 +114,15 @@ bool CheckOnes(vector<double> vec){
     return true;
 }
 
+vector<int> Round_toint(vector<double> vec){
+    vector<int> output;
+    for(int i = 0; i < vec.size() ; ++i){
+        int num = static_cast<int>(round(vec[i]));
+        output.push_back(num);
+    }
+    return output;
+}
+
 vector<vector<int>> Nullspace(vector<vector<double>> A) {
     vector<vector<double>> nullspace;
     vector<vector<int>> nullspaceInt;
@@ -133,22 +144,32 @@ vector<vector<int>> Nullspace(vector<vector<double>> A) {
 
     nullspaceDim = colsA - rank;
 
+    cout << "After Gaussian elimination: " << endl;
+
+    Print_Matrix(A);
+    cout << endl;
+
     for(int i=0; i < colsA; i++){
         if(!Num_found_inVec(i, PivotCols)){ 
             vector<double> BasisVec(A[0].size() , 0);
-            BasisVec[i] = 1;
+            BasisVec[i] = 1.0;
             // Mark the rows that have a non-zero entry in this column:
             for(int k = 0; k < rank; k++){
                 BasisVec[PivotCols[k]] = -1.0*A[PivotRows[k]][i];
             }
             nullspace.push_back(BasisVec);
+            cout << "Basis Vector is: " << endl;
+            Print_Matrix(vector<vector<double>> {BasisVec});
+            cout << endl;
+
         }
     }
     //nullspace = Transpose(nullspace);
 
     for(int i = 0; i < nullspace.size() ; i++){
         if(CheckOnes(nullspace[i])){
-            vector<int> nullint(nullspace[i].begin() , nullspace[i].end());
+            vector<int> nullint = Round_toint(nullspace[i]);
+            //vector<int> nullint(nullspace[i].begin() , nullspace[i].end());
             nullspaceInt.push_back(nullint);
         }
     }
