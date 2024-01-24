@@ -114,6 +114,17 @@ bool CheckOnes(vector<double> vec){
     return true;
 }
 
+bool CheckOnesInt(vector<int> vec){
+    for(int i = 0; i < vec.size(); i++){
+        if(abs(abs(vec[i])-1) < 1E-6 || abs(vec[i]) < 1E-6){
+        }
+        else{
+            return false;
+        }
+    }
+    return true;
+}
+
 vector<int> Round_toint(vector<double> vec){
     vector<int> output;
     for(int i = 0; i < vec.size() ; ++i){
@@ -177,4 +188,55 @@ vector<vector<int>> Nullspace(vector<vector<double>> A) {
     return Transpose(nullspaceInt);
 }
 
+vector<int> Vec_add(vector<int> v1 , vector<int> v2){
+    if(v1.size() != v2.size()){
+        cerr << "Vec_add Error: The sizes of the two input vectors are different!" << endl;
+        return {0};
+    }
+    vector<int> sumv12;
+    for(int i = 0; i < v1.size() ; ++i){
+        sumv12.push_back(v1[i] + v2[i]);
+    }
+    return sumv12;
+}
 
+vector<int> Vec_sub(vector<int> v1 , vector<int> v2){
+    if(v1.size() != v2.size()){
+        cerr << "Vec_add Error: The sizes of the two input vectors are different!" << endl;
+        return {0};
+    }
+    vector<int> sumv12;
+    for(int i = 0; i < v1.size() ; ++i){
+        sumv12.push_back(v1[i] - v2[i]);
+    }
+    return sumv12;
+}
+
+int Abs_sum(vector<int> vec){
+    int sum = 0;
+    for(int i = 0; i < vec.size(); i++){
+        sum += abs(vec[i]);
+    }
+    return sum;
+}
+
+bool compare_null(const vector<int> & a, const vector<int> & b){
+	return Abs_sum(a) < Abs_sum(b);
+}
+
+int Cycle_minimize(vector<vector<int>>& null_eigs){ 
+	int nullsize, k, m, null_k, changes_made = 0; vector<int> curr;
+	nullsize = null_eigs.size();
+	sort(null_eigs.begin(), null_eigs.end(), compare_null);
+	for(k = nullsize-1; k > 0 ; k--){
+		null_k = Abs_sum(null_eigs[k]);
+		for(m = 0 ; m < k; m++){
+			curr = Vec_sub( null_eigs[k] , null_eigs[m]);
+			if(Abs_sum(curr) < null_k){
+				null_eigs[k] = curr; changes_made = 1;
+				break;
+			}
+		}
+	}
+	return changes_made;
+}

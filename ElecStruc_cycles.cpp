@@ -81,6 +81,14 @@ bool Diag_compare(vector<int> d1 , vector<int> d2){
     }
 }
 
+vector<double> Perm_add(vector<double> p1 , vector<double> p2 ){
+    vector<double> output = p1;
+    for(int i = 0; i < p2.size(); ++i){
+        output[i] += p2[i];
+    }
+    return output;
+}
+
 vector<double> Perm_sub(vector<double> p1 , vector<double> p2 ){
     vector<double> output = p1;
     for(int i = 0; i < p2.size(); ++i){
@@ -101,7 +109,10 @@ bool All_zeros(vector<double> v){
 bool Perm_compare(vector<double> p1 , vector<double> p2){
     int s1 = p1.size() , s2 = p2.size();
     vector<double> diff = Perm_sub(p1, p2);
-    if(All_zeros(diff)){
+    vector<double> summ = Perm_add(p1, p2);
+
+    // Either identical permutation or its conjugate!
+    if(All_zeros(diff) || All_zeros(sum)){
         return true;
     }
     else{
@@ -333,8 +344,16 @@ int main(int argc , char* argv[]) {
     }
     cout << endl;
 
-    cout << "The cycles are: " << endl;
+    cout << "The cycles are before minimization: " << endl;
     Print_matrix(Cycles);
+    cout << endl;
+
+    // Minimizing cycles lengths!
+    Cycles = Transpose(Cycles);
+    while(Cycle_minimize(Cycles));
+    cout << "The cycles after minimization are: " << endl;
+    Cycles = Transpose(Cycles);
+    Print_Matrix(Cycles);
 
     /*cout << endl;
     int count = 0;
