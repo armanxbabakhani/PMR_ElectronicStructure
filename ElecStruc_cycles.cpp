@@ -344,43 +344,12 @@ int main(int argc , char* argv[]) {
     }
     cout << endl;
 
-    cout << "The cycles are before minimization: " << endl;
-    Print_matrix(Cycles);
-    cout << endl;
-
-    // Minimizing cycles lengths!
+    // Minimizing cycles lengths and printing them!
     Cycles = Transpose(Cycles);
     while(Cycle_minimize(Cycles));
     cout << "The cycles after minimization are: " << endl;
     Cycles = Transpose(Cycles);
     Print_Matrix(Cycles);
 
-    /*cout << endl;
-    int count = 0;
-    for(int i = 0; i < Cycles[2].size(); ++i){
-        int no = Cycles[i][4];
-        if(abs(no) > 1E-3){
-            count++;
-            cout << "The index is " << i << endl;
-        }
-        cout << no << endl;
-    }*/
-
-   // cout << "The count of non-zeros is: " << count << endl;
-
-    /*cout << "Printing the cycle 12 13 and 17: " << endl;
-    for(int i = 0; i < Cycles.size(); ++i){
-        int no = Cycles[i][4];
-        if(abs(no) > 1E-3){
-            count++;
-            cout << "The index is " << i << endl;
-        }
-        cout << no << endl;
-    }
-    cout << "Here are the cycles: " << endl;*/
-
-    /*for(int i=0; i < PermMatrix.size(); i++){
-        cout << PermMatrix[i][12] << "    " << PermMatrix[i][13] << "    " << PermMatrix[i][17] << endl;
-    }*/
     return 0;
 }
