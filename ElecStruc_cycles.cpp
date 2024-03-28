@@ -13,7 +13,7 @@ typedef vector<vector<double>> CrAnOps;
 typedef vector<vector<int>> NumberOps; 
 
 struct DPdataElec{
-    vector<vector<complex<double>>> Coeffs;
+    vector<vector<complex<double>>> Coeffs , CoeffsConj;
     vector<NumberOps> Diagonals;
     CrAnOps Permutations;
     vector<complex<double>> Coeffs0;
@@ -109,7 +109,7 @@ bool All_zeros(vector<double> v){
 bool Perm_compare(vector<double> p1 , vector<double> p2){
     int s1 = p1.size() , s2 = p2.size();
     vector<double> diff = Perm_sub(p1, p2);
-    vector<double> summ = Perm_add(p1, p2);
+    vector<double> sum = Perm_add(p1, p2);
 
     // Either identical permutation or its conjugate!
     if(All_zeros(diff) || All_zeros(sum)){
@@ -137,6 +137,15 @@ pair<bool , int> Perm_found(vector<double> v , CrAnOps Vs){
     }
     return make_pair(false , -1); 
 }
+
+vector<double> Perm_conjugate(vector<double> v){
+    vector<double> vconj;
+    for(int i=0; i < v.size(); i++){
+        vconj.push_back(-1.0*v[i]);
+    }
+    return vconj;
+}
+
 
 complex<double> Read_coeff(const string complexStr){
     int plusPos = -1 , minPos = -1 , iPos = -1 ;
@@ -185,6 +194,40 @@ complex<double> Read_coeff(const string complexStr){
     return complexNumber;
 }   
 
+pair<int, int> Perm_lengths(vector<double> perm){
+    int l = 0 , k = 0;
+    pair<int , int> landk;
+    for(int i = 0 ; i < perm.size() ; ++i){
+        if(abs(perm[i] - 1.0) < 1E-6){
+            l++;
+        }
+        else if(abs(perm[i] + 1.0) < 1E-6){
+            k++;
+        }
+    }
+    landk.first = l;
+    landk.second = k;
+    return landk;
+}
+
+vector<vector<complex<double>>> Conjugate_coeffs(vector<vector<complex<double>>> Cs , vector<vector<double>> Perms){
+    vector<vector<complex<double>>> CsConj;
+    for(int i=0; i < Perms.size() ; i++){
+        pair<int, int> cran_lengths = Perm_lengths(Perms[i]);
+        double sgn_factor = pow(-1.0 ,cran_lengths.first + cran_lengths.second);
+        vector<complex<double>> CsConj_i;
+        for(int j=0; j < Cs[i].size() ; ++j){
+            // Adding/subtracting Cs[i][j] with its conjugate if the l + k is even/odd
+            // l is the number of creation operators and k is the number of annihilation operators
+            CsConj_i.push_back(conj(Cs[i][j])*sgn_factor);
+        }
+        CsConj.push_back(CsConj_i);
+    }
+
+    cout << "done with conjugate coeffs..." << endl;
+    return CsConj;
+}
+
 DPdataElec Data_to_Perms(const string& filename){
     int NumOfParticles = 0;
     DPdataElec Data;
@@ -222,7 +265,7 @@ DPdataElec Data_to_Perms(const string& filename){
     // Now building the permutation matrices
     inputFile.open(filename);
     while(getline(inputFile, line)){
-        vector<double> perm(NumOfParticles+1 , 0.0);
+        vector<double> perm(NumOfParticles+1 , 0.0) , permconj(NumOfParticles+1 , 0.0);
         vector<int> diagonal = {};
         int number;
         istringstream iss(line);
@@ -291,10 +334,20 @@ DPdataElec Data_to_Perms(const string& filename){
                 }
             }
             else{
+                pair<bool , int> Pconjfound = Perm_found(Perm_conjugate(perm) , Data.Permutations);
+                if(Pconjfound.first){
+                    pair<bool, int> Dfound = Diag_found(diagonal , Data.Diagonals[Pconjfound.second]);
+                    // If the diagonal of a conjugate operator is not found, we add it to the list
+                    // Otherwise, we ignore and only ensure that the coefficients are added with their hermitian counterparts to ensure hermiticity!
+                    if(!Dfound.first){
+                        Data.Coeffs[Pconjfound.second].push_back(coeff);
+                        Data.Diagonals[Pconjfound.second].push_back(diagonal);
+                    }
+                }
                 Data.Coeffs.push_back({coeff});
                 Data.Diagonals.push_back({diagonal});
                 Data.Permutations.push_back(perm);
-            } 
+            }
         }
     }
     inputFile.close();
@@ -318,6 +371,11 @@ int main(int argc , char* argv[]) {
     vector<complex<double>> C0 = ElecData.Coeffs0;
     vector<vector<int>> Cycles = Nullspace(PermMatrix);
 
+
+    cout << "Running the conjugate coeffs" << endl;
+
+    vector<vector<complex<double>>> Cs_conj = Conjugate_coeffs(Cs , Transpose(PermMatrix));
+
     cout << endl;
     cout << "The permutations are: "  << endl;
     Print_matrix(PermMatrix);
@@ -332,6 +390,10 @@ int main(int argc , char* argv[]) {
 
     cout << "The coefficients are: " << endl;
     Print_matrix(Cs);
+    cout << endl;
+
+    cout << "The conjugate coefficients are: " << endl;
+    Print_matrix(Cs_conj);
     cout << endl;
 
     cout << "The purely diagonal terms are: " << endl;
