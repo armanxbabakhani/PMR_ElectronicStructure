@@ -109,10 +109,8 @@ bool All_zeros(vector<double> v){
 bool Perm_compare(vector<double> p1 , vector<double> p2){
     int s1 = p1.size() , s2 = p2.size();
     vector<double> diff = Perm_sub(p1, p2);
-    vector<double> sum = Perm_add(p1, p2);
 
-    // Either identical permutation or its conjugate!
-    if(All_zeros(diff) || All_zeros(sum)){
+    if(All_zeros(diff)){
         return true;
     }
     else{
@@ -223,8 +221,6 @@ vector<vector<complex<double>>> Conjugate_coeffs(vector<vector<complex<double>>>
         }
         CsConj.push_back(CsConj_i);
     }
-
-    cout << "done with conjugate coeffs..." << endl;
     return CsConj;
 }
 
@@ -339,14 +335,24 @@ DPdataElec Data_to_Perms(const string& filename){
                     pair<bool, int> Dfound = Diag_found(diagonal , Data.Diagonals[Pconjfound.second]);
                     // If the diagonal of a conjugate operator is not found, we add it to the list
                     // Otherwise, we ignore and only ensure that the coefficients are added with their hermitian counterparts to ensure hermiticity!
+                    pair<int, int> cran_lengths = Perm_lengths(perm);
+                    double sgn_factor = pow(-1.0 ,cran_lengths.first + cran_lengths.second);
+                    complex<double> coeffconj = conj(coeff)*sgn_factor;
                     if(!Dfound.first){
-                        Data.Coeffs[Pconjfound.second].push_back(coeff);
+                        Data.Coeffs[Pconjfound.second].push_back(coeffconj);
                         Data.Diagonals[Pconjfound.second].push_back(diagonal);
                     }
+                    else if(coeffconj != Data.Coeffs[Pconjfound.second][Dfound.second]){
+                        // Adding the conjugate to the list if there's a permutation conjugate that is not a full conjugate of an 
+                        //      existing term!
+                        Data.Coeffs[Pconjfound.second][Dfound.second] += coeffconj;
+                    }
                 }
-                Data.Coeffs.push_back({coeff});
-                Data.Diagonals.push_back({diagonal});
-                Data.Permutations.push_back(perm);
+                else{
+                    Data.Coeffs.push_back({coeff});
+                    Data.Diagonals.push_back({diagonal});
+                    Data.Permutations.push_back(perm);
+                }
             }
         }
     }
