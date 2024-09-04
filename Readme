@@ -1,5 +1,11 @@
+### Assumptions about the input file
+
 The assumptions about the input file:
 1- If there are any creation and annihilation of the same particle label, they come in the form of a number operator
 
 The format of permutations saved (not relevant to the user):
-- The permutations are always kept in the form where all creation operators appear first. For example, c_1 c_2^ will be kept as c_2^ c_1 and automatically a factor of minus one will be accounted for in the coefficient.
+2- The permutations are always kept in the form where all creation operators appear first. For example, c_1 c_2^ will be kept as c_2^ c_1 and automatically a factor of minus one will be accounted for in the coefficient.
+
+3- It is also assumed that if there exists an a string that is the adjoint of an existing string, it is the hermitian conjugate pair of the existing term, i.e. their coefficients are the complex conjugates of each other.
+
+4- Another important assumption: Any adjoint string will have the same permutation (ordering of creation and annihilation) as an existing string. Example: existing string 1.o [1^ 2^ 3 4] , we cannot have a string 1.0 [3^ 4^ 2 1], as the adjoint of the existing string is 1.0 [4^ 3^ 2 1]. Otherwise, the input file reader will output incorrect values.
