@@ -268,10 +268,12 @@ DPdataElec Data_to_Perms(const string& filename){
         vector<int> CrString = {}, AnString = {};
         vector<string> tokens(istream_iterator<string>{iss},istream_iterator<string> ());
         complex<double> coeff = Read_coeff(tokens[0]);
+        bool StateKilled = false;
         for(int i=1; i < tokens.size()-1; i++){
             // Determining whether dagger or not:
             double creation = 1.0 , Anfactor = 1.0 , Crfactor = 1.0;
             size_t pos = -1;
+            
             pos = tokens[i].rfind('^');
             
             if(i == 1){
@@ -283,22 +285,45 @@ DPdataElec Data_to_Perms(const string& filename){
             if(pos == -1){
                 creation = -1.0;
                 pair<bool , int> Anfound = Find_number(number, CrString);
-                // Finding a diagonal term and accounting for the permutation factor for bringing together a n_i = c^_i c_i .
-                if(Anfound.first){
-                    Anfactor = Anfactor*pow(-1.0 , CrString.size() + AnString.size() - Anfound.second - 1);
-                    diagonal.push_back(number);
-                    CrString.erase(CrString.begin() + Anfound.second);
+                pair<bool , int> Crfound = Find_number(number, AnString);
+                // If two excitations of the same orbital occurs, state is killed (fermionic statistics)!
+                if(!Crfound.first){
+                    // Finding a diagonal term and accounting for the permutation factor for bringing together a n_i = c^_i c_i .
+                    if(Anfound.first){
+                        Anfactor = Anfactor*pow(-1.0 , CrString.size() + AnString.size() - Anfound.second - 1);
+                        diagonal.push_back(number);
+                        CrString.erase(CrString.begin() + Anfound.second);
+                    }
+                    else{
+                        AnString.push_back(number);
+                    }
                 }
                 else{
-                    AnString.push_back(number);
+                    StateKilled = true;
                 }
             }
             else{
-                Crfactor = pow(-1.0 , AnString.size());
-                CrString.push_back(number);
+                pair<bool , int> Anfound = Find_number(number, CrString);
+                if(!Anfound.first){
+                    Crfactor = pow(-1.0 , AnString.size());
+                    CrString.push_back(number);
+                }
+                // If two annihilations of the same orbital occurs, state is killed (fermionic statistics)!
+                else{
+                    StateKilled = true;
+                }
             }
-            perm[number] += creation;
-            coeff = coeff*Crfactor*Anfactor;
+
+            // Checking if any of the annihilations or excitations have occurred repeatedly to kill the entire state:
+            if(!StateKilled){
+                perm[number] += creation;
+                coeff = coeff*Crfactor*Anfactor;
+            }
+            else{
+                coeff = 0.0;
+                perm = vector<double> (NumOfParticles+1 , 0.0);
+                break;
+            }
         }
         coeff = coeff * Sort_permute(CrString) * Sort_permute(AnString);
 
@@ -336,17 +361,20 @@ DPdataElec Data_to_Perms(const string& filename){
                     // If the diagonal of a conjugate operator is not found, we add it to the list
                     // Otherwise, we ignore and only ensure that the coefficients are added with their hermitian counterparts to ensure hermiticity!
                     pair<int, int> cran_lengths = Perm_lengths(perm);
-                    double sgn_factor = pow(-1.0 ,cran_lengths.first + cran_lengths.second);
+                    double sgn_factor = pow(-1.0 , cran_lengths.first + cran_lengths.second);
                     complex<double> coeffconj = conj(coeff)*sgn_factor;
+                    cout << "The conjugate coefficient is " << coeffconj << endl;
+                    cout << endl;
                     if(!Dfound.first){
                         Data.Coeffs[Pconjfound.second].push_back(coeffconj);
                         Data.Diagonals[Pconjfound.second].push_back(diagonal);
                     }
+                    /*
                     else if(coeffconj != Data.Coeffs[Pconjfound.second][Dfound.second]){
                         // Adding the conjugate to the list if there's a permutation conjugate that is not a full conjugate of an 
                         //      existing term!
-                        Data.Coeffs[Pconjfound.second][Dfound.second] += coeffconj;
-                    }
+                        //Data.Coeffs[Pconjfound.second][Dfound.second] += coeffconj;
+                    }*/
                 }
                 else{
                     Data.Coeffs.push_back({coeff});
