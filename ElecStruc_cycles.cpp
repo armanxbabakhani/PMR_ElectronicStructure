@@ -11,6 +11,7 @@ using namespace std;
 
 typedef vector<vector<double>> CrAnOps;
 typedef vector<vector<int>> NumberOps; 
+typedef vector<vector<int>> Matrix;
 
 struct DPdataElec{
     vector<vector<complex<double>>> Coeffs , CoeffsConj;
@@ -21,9 +22,10 @@ struct DPdataElec{
 };
 
 template<typename T>
-void Print_matrix(const vector<vector<T>>& matrix) {
+void print_matrix(const vector<vector<T>>& matrix , string name) {
     int m = matrix.size();
     for (int i = 0; i < m; i++) {
+        cout << name << "[" << i << "] = ";
         for (int j = 0; j < matrix[i].size(); j++) {
             cout << matrix[i][j] << "  ";
         }
@@ -211,7 +213,8 @@ pair<int, int> Perm_lengths(vector<double> perm){
 vector<vector<complex<double>>> Conjugate_coeffs(vector<vector<complex<double>>> Cs , vector<vector<double>> Perms){
     vector<vector<complex<double>>> CsConj;
     for(int i=0; i < Perms.size() ; i++){
-        pair<int, int> cran_lengths = Perm_lengths(Perms[i]);
+        vector<double> Perms_i(Perms[i].begin() , Perms[i].end());
+        pair<int, int> cran_lengths = Perm_lengths( Perms_i );
         double sgn_factor = pow(-1.0 ,cran_lengths.first + cran_lengths.second);
         vector<complex<double>> CsConj_i;
         for(int j=0; j < Cs[i].size() ; ++j){
@@ -363,8 +366,8 @@ DPdataElec Data_to_Perms(const string& filename){
                     pair<int, int> cran_lengths = Perm_lengths(perm);
                     double sgn_factor = pow(-1.0 , cran_lengths.first + cran_lengths.second);
                     complex<double> coeffconj = conj(coeff)*sgn_factor;
-                    cout << "The conjugate coefficient is " << coeffconj << endl;
-                    cout << endl;
+                    //cout << "The conjugate coefficient is " << coeffconj << endl;
+                    //cout << endl;
                     if(!Dfound.first){
                         Data.Coeffs[Pconjfound.second].push_back(coeffconj);
                         Data.Diagonals[Pconjfound.second].push_back(diagonal);
@@ -388,8 +391,129 @@ DPdataElec Data_to_Perms(const string& filename){
     return Data;
 }
 
+int determinant(const Matrix& matrix) {
+    int n = matrix.size();
+
+    // Base case for 1x1 matrix
+    if (n == 1) {
+        return matrix[0][0];
+    }
+
+    // Base case for 2x2 matrix
+    if (n == 2) {
+        return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+    }
+
+    int det = 0;
+
+    // Recursive case: expand along the first row
+    for (int col = 0; col < n; ++col) {
+        // Create a submatrix by excluding the first row and the current column
+        vector<vector<int>> submatrix(n - 1, vector<int>(n - 1));
+        for (int i = 1; i < n; ++i) {
+            int subCol = 0;
+            for (int j = 0; j < n; ++j) {
+                if (j == col) continue; // Skip the current column
+                submatrix[i - 1][subCol++] = matrix[i][j];
+            }
+        }
+
+        // Compute the cofactor and add to determinant
+        int sign = (col % 2 == 0) ? 1 : -1;
+        det += sign * matrix[0][col] * determinant(submatrix);
+    }
+
+    return det;
+}
+
+void remove_wrong_cycles(vector<vector<int>> &NullspaceInt, const vector<vector<int>> &PermutationMatrices) {
+    // Ensure dimensions match between NullspaceInt and PermutationMatrices
+    cout << "The dimension of NullspaceInt: " << NullspaceInt.size() << " and " << NullspaceInt[0].size() << endl;
+
+    cout << "The dimension of Permutation: " << PermutationMatrices.size() << " and " << PermutationMatrices[0].size() << endl;
+    if (NullspaceInt.empty() || PermutationMatrices.empty() || NullspaceInt[0].size() != PermutationMatrices.size()) {
+        cerr << "Dimension mismatch between NullspaceInt and PermutationMatrices." << endl;
+        return;
+    }
+
+    // Resultant vector for checking each condition
+    vector<vector<int>> validVectors;
+
+    for (const auto &nullVec : NullspaceInt) {
+        // Initialize a vector<int> to store the sum result for this nullVec
+        vector<int> sumResult(PermutationMatrices[0].size(), 0);
+
+        for (size_t i = 0; i < nullVec.size(); ++i) {
+            // Check if the coefficient in nullVec is 0, -1, or 1
+            if (nullVec[i] != 0 && nullVec[i] != 1 && nullVec[i] != -1) {
+                cerr << "Invalid coefficient found in NullspaceInt." << endl;
+                continue;
+            }
+
+            // Add the scaled PermutationMatrices[i] to sumResult
+            for (size_t j = 0; j < PermutationMatrices[i].size(); ++j) {
+                sumResult[j] += nullVec[i] * PermutationMatrices[i][j];
+            }
+        }
+
+        // Check if sumResult is a vector with all entries zero
+        bool isValid = all_of(sumResult.begin(), sumResult.end(), [](int val) { return val == 0; });
+
+        if (isValid) {
+            validVectors.push_back(nullVec); // Keep this vector as it satisfies the condition
+        }
+    }
+
+    // Update NullspaceInt to only include valid vectors
+    NullspaceInt = validVectors;
+}
+
+
+Matrix find_all_electronic_cycles(Matrix PermutationMatrices){
+    // The permutation matrices contain 1 , 0 , or -1 , so we will convert this into mod 3 linear algebra
+    //  by replacing the -1 with 2
+
+    // Replacing -1 with 2
+    Matrix PermMatrixMod3 = PermutationMatrices;
+    for(int i=0; i < PermutationMatrices.size(); ++i){
+        for(int j=0; j < PermutationMatrices[i].size(); ++j){
+            if(PermutationMatrices[i][j] == -1){
+                PermMatrixMod3[i][j] = 2;
+            }
+        }
+    }
+    cout << "Right before Modp nullspace computation! " << endl;
+
+    Matrix NullspaceInt , Nullspace = Modp_nullspace(PermMatrixMod3 , 3);
+
+    cout << "Mod nullspace is computed! " << endl;
+
+    // Converting the 2 back to -1:
+    for(int i=0; i < Nullspace.size(); ++i){
+        for(int j=0; j < Nullspace[i].size(); ++j){
+            if(Nullspace[i][j] == 2){
+                Nullspace[i][j] = -1;
+            }
+        }
+    }
+
+    for(int i = 0; i < Nullspace.size() ; i++){
+        if(CheckOnesInt(Nullspace[i])){
+            vector<int> nullint = Nullspace[i];
+            //vector<int> nullint(nullspace[i].begin() , nullspace[i].end());
+            NullspaceInt.push_back(nullint);
+        }
+    }
+
+    // Remove the wrong cycles:
+    NullspaceInt = Transpose(NullspaceInt);
+    remove_wrong_cycles(NullspaceInt , Transpose(PermutationMatrices));
+
+    return NullspaceInt;
+}
+
 int main(int argc , char* argv[]) {
-    vector<vector<double>> PermMatrix;
+
     NumberOps D0;
     vector<NumberOps> Diags;
     vector<vector<complex<double>>> Cs;
@@ -397,55 +521,71 @@ int main(int argc , char* argv[]) {
 
     string filename(argv[1]);
     ElecData = Data_to_Perms(filename);
+    vector<vector<double>> PermMatrixDouble = Transpose(ElecData.Permutations);
+    vector<vector<int>> PermMatrix(PermMatrixDouble.size() , vector<int>(PermMatrixDouble[0].size() , 0));
+    
+    for (size_t i = 0; i < PermMatrixDouble.size(); ++i) {
+        for(size_t j =0; j < PermMatrixDouble[i].size(); j++){
+            PermMatrix[i][j] = static_cast<int>(PermMatrixDouble[i][j]); // Converts double to int (truncates the decimal part)
+        }
+    }
 
-    PermMatrix = Transpose(ElecData.Permutations);
     Diags = ElecData.Diagonals;
     Cs = ElecData.Coeffs;
     D0 = ElecData.D0;
     vector<complex<double>> C0 = ElecData.Coeffs0;
-    vector<vector<int>> Cycles = Nullspace(PermMatrix);
+    cout << "Starting to compute the nullspace! " << endl;
+    // vector<vector<int>> Cycles = Nullspace(PermMatrixDouble);
+    vector<vector<int>> Cycles = find_all_electronic_cycles(PermMatrix);
+    cout << "Nullspace computation is done! " << endl;
+    Print_Matrix(Cycles);
 
-
-    cout << "Running the conjugate coeffs" << endl;
-
-    vector<vector<complex<double>>> Cs_conj = Conjugate_coeffs(Cs , Transpose(PermMatrix));
+    //vector<vector<complex<double>>> Cs_conj = Conjugate_coeffs(Cs , Transpose(PermMatrixDouble));
 
     cout << endl;
     cout << "The permutations are: "  << endl;
-    Print_matrix(PermMatrix);
+    print_matrix(Transpose(PermMatrix) , "Permutations");
     cout << endl;
 
-    cout << "The diagonals are: "  << endl;
-    for(int i=0; i < Diags.size(); ++i){
-        cout << "Diag_" << i << " is " << endl;
-        Print_matrix(Diags[i]);
-    }
-    cout << endl;
+    // cout << "The diagonals are: "  << endl;
+    // for(int i=0; i < Diags.size(); ++i){
+    //     cout << "Diag_" << i << " is " << endl;
+    //     Print_matrix(Diags[i]);
+    // }
+    // cout << endl;
 
-    cout << "The coefficients are: " << endl;
-    Print_matrix(Cs);
-    cout << endl;
+    // cout << "The coefficients are: " << endl;
+    // Print_matrix(Cs);
+    // cout << endl;
 
-    cout << "The conjugate coefficients are: " << endl;
-    Print_matrix(Cs_conj);
-    cout << endl;
+    // cout << "The conjugate coefficients are: " << endl;
+    // Print_matrix(Cs_conj);
+    // cout << endl;
 
-    cout << "The purely diagonal terms are: " << endl;
-    Print_matrix(D0);
-    cout << endl;
+    // cout << "The purely diagonal terms are: " << endl;
+    // Print_matrix(D0);
+    // cout << endl;
 
-    cout << "The coefficient for the purely diagonal are: " << endl;
-    for(int i = 0; i < C0.size(); ++i){
-        cout << C0[i] << endl;
-    }
-    cout << endl;
+    // cout << "The coefficient for the purely diagonal are: " << endl;
+    // for(int i = 0; i < C0.size(); ++i){
+    //     cout << C0[i] << endl;
+    // }
+    // cout << endl;
 
     // Minimizing cycles lengths and printing them!
+    for(int i=0; i < Cycles.size(); ++i){
+        for(int j=0; j < Cycles[i].size(); ++j){
+            if(Cycles[i][j] == 2){
+                Cycles[i][j] = -1;
+            }
+        }
+    }
+
     Cycles = Transpose(Cycles);
     while(Cycle_minimize(Cycles));
-    cout << "The cycles after minimization are: " << endl;
+    //cout << "The cycles after minimization are: " << endl;
     Cycles = Transpose(Cycles);
-    Print_Matrix(Cycles);
+    print_matrix(Transpose(Cycles) , "cycles");
 
     return 0;
 }

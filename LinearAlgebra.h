@@ -2,6 +2,7 @@
 #include <vector>
 
 using namespace std;
+typedef vector<vector<int>> Matrix;
 
 template<typename T>
 void Print_Matrix(const vector<vector<T>>& matrix) {
@@ -10,6 +11,7 @@ void Print_Matrix(const vector<vector<T>>& matrix) {
         for (int j = 0; j < matrix[i].size(); j++) {
             cout << matrix[i][j] << "  ";
         }
+        cout << endl;
         cout << endl;
     }
 }
@@ -92,6 +94,17 @@ vector<vector<T>> Transpose(vector<vector<T>> A){
     }
 }
 
+bool All_zeros(Matrix A){
+    for(int i = 0; i < A.size(); i++){
+        for(int j = 0; j < A[0].size(); j++){
+            if(A[i][j] != 0){
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool Num_found_inVec(int num , vector<int> Vec){
     bool found = false;
     for (int i=0; i < Vec.size(); i++){
@@ -134,6 +147,102 @@ vector<int> Round_toint(vector<double> vec){
     return output;
 }
 
+int modInverse(int a, int mod) {
+    // Assumes mod is a prime number
+    int m = mod - 2;  // Fermat's little theorem
+    int result = 1;
+    while (m) {
+        if (m & 1)
+            result = (result * a) % mod;
+        a = (a * a) % mod;
+        m >>= 1;
+    }
+    return result;
+}
+
+Matrix Modp_nullspace(const Matrix& A, int p) {
+    int n = A.size();        // number of rows
+    int m = A[0].size();     // number of columns
+    Matrix B = A;            // Make a copy of A to transform into RREF
+    Matrix nullspace;
+    
+    for(int i = 0; i < n ; ++i){
+        for(int j = 0; j < m; ++j){
+            B[i][j] = B[i][j]%p;
+        }
+    }
+    
+    if(All_zeros(B)){
+        return {{0}};
+    }
+
+
+    // Step 1: Transform B into RREF form mod p
+    int row = 0;
+    vector<int> lead_col(m, -1);  // Track leading columns
+    for (int col = 0; col < m && row < n; col++) {
+        int sel = row;
+        // Find a non-zero entry in the current column
+        for (int i = row; i < n; i++) {
+            if (B[i][col] % p != 0) {
+                sel = i;
+                break;
+            }
+        }
+
+        if (B[sel][col] % p == 0)
+            continue;  // Skip this column if no non-zero entries
+
+        // Swap rows if necessary
+        if (sel != row) {
+            swap(B[sel], B[row]);
+        }
+
+        // Scale row to make the leading coefficient 1
+        int inv = modInverse(B[row][col], p);
+        for (int j = 0; j < m; j++) {
+            B[row][j] = (B[row][j] * inv) % p;
+            if (B[row][j] < 0) B[row][j] += p;
+        }
+
+        // Zero out all other entries in this column
+        for (int i = 0; i < n; i++) {
+            if (i != row) {
+                int c = B[i][col];
+                for (int j = 0; j < m; j++) {
+                    B[i][j] = (B[i][j] - c * B[row][j] % p + p) % p;
+                }
+            }
+        }
+
+        lead_col[row] = col;  // Mark the leading column
+        row++;
+    }
+
+    // Step 2: Identify free variables and form nullspace basis vectors
+    nullspace.clear();
+    vector<int> free_var_index;
+    for (int j = 0; j < m; j++) {
+        if (find(lead_col.begin(), lead_col.end(), j) == lead_col.end()) {
+            free_var_index.push_back(j);  // j is a free variable
+        }
+    }
+
+    for (int idx : free_var_index) {
+        vector<int> basis_vec(m, 0);
+        basis_vec[idx] = 1;  // Set the free variable
+        for (int i = 0; i < row; i++) {
+            if (lead_col[i] != -1) {
+                basis_vec[lead_col[i]] = -B[i][idx];
+                if (basis_vec[lead_col[i]] < 0)
+                    basis_vec[lead_col[i]] += p;
+            }
+        }
+        nullspace.push_back(basis_vec);
+    }
+    return Transpose(nullspace);
+}
+
 vector<vector<int>> Nullspace(vector<vector<double>> A) {
     vector<vector<double>> nullspace;
     vector<vector<int>> nullspaceInt;
@@ -141,6 +250,7 @@ vector<vector<int>> Nullspace(vector<vector<double>> A) {
     vector<int> PivotCols , PivotRows;
 
     Gauss_Elim(A);
+    //Print_Matrix(A);
     //Determine pivot columns:
     for(int i = 0; i < rowsA; i++){
         for(int j = 0; j < colsA; j++){
@@ -155,24 +265,18 @@ vector<vector<int>> Nullspace(vector<vector<double>> A) {
 
     nullspaceDim = colsA - rank;
 
-    cout << "After Gaussian elimination: " << endl;
-
-    Print_Matrix(A);
-    cout << endl;
-
     for(int i=0; i < colsA; i++){
         if(!Num_found_inVec(i, PivotCols)){ 
-            vector<double> BasisVec(A[0].size() , 0);
+            vector<double> BasisVec( A[0].size() , 0 );
             BasisVec[i] = 1.0;
             // Mark the rows that have a non-zero entry in this column:
             for(int k = 0; k < rank; k++){
                 BasisVec[PivotCols[k]] = -1.0*A[PivotRows[k]][i];
             }
             nullspace.push_back(BasisVec);
-            cout << "Basis Vector is: " << endl;
-            Print_Matrix(vector<vector<double>> {BasisVec});
+            //cout << "Basis Vector is: " << endl;
+            //Print_Matrix(vector<vector<double>> {BasisVec});
             cout << endl;
-
         }
     }
     //nullspace = Transpose(nullspace);
@@ -184,7 +288,6 @@ vector<vector<int>> Nullspace(vector<vector<double>> A) {
             nullspaceInt.push_back(nullint);
         }
     }
-
     return Transpose(nullspaceInt);
 }
 
