@@ -582,9 +582,9 @@ int main(int argc , char* argv[]) {
     }
 
     Cycles = Transpose(Cycles);
-    while(Cycle_minimize(Cycles));
+    //while(Cycle_minimize(Cycles));
     //cout << "The cycles after minimization are: " << endl;
-    Cycles = Transpose(Cycles);
+    //Cycles = Transpose(Cycles);
     print_matrix(Transpose(Cycles) , "cycles");
 
     return 0;
