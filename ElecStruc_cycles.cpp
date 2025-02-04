@@ -547,30 +547,7 @@ int main(int argc , char* argv[]) {
     print_matrix(Transpose(PermMatrix) , "Permutations");
     cout << endl;
 
-    // cout << "The diagonals are: "  << endl;
-    // for(int i=0; i < Diags.size(); ++i){
-    //     cout << "Diag_" << i << " is " << endl;
-    //     Print_matrix(Diags[i]);
-    // }
-    // cout << endl;
-
-    // cout << "The coefficients are: " << endl;
-    // Print_matrix(Cs);
-    // cout << endl;
-
-    // cout << "The conjugate coefficients are: " << endl;
-    // Print_matrix(Cs_conj);
-    // cout << endl;
-
-    // cout << "The purely diagonal terms are: " << endl;
-    // Print_matrix(D0);
-    // cout << endl;
-
-    // cout << "The coefficient for the purely diagonal are: " << endl;
-    // for(int i = 0; i < C0.size(); ++i){
-    //     cout << C0[i] << endl;
-    // }
-    // cout << endl;
+ 
 
     // Minimizing cycles lengths and printing them!
     for(int i=0; i < Cycles.size(); ++i){
@@ -581,11 +558,8 @@ int main(int argc , char* argv[]) {
         }
     }
 
-    Cycles = Transpose(Cycles);
     //while(Cycle_minimize(Cycles));
-    //cout << "The cycles after minimization are: " << endl;
-    //Cycles = Transpose(Cycles);
-    print_matrix(Transpose(Cycles) , "cycles");
+    print_matrix(Cycles, "cycles");
 
     return 0;
 }
