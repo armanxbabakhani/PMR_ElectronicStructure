@@ -231,6 +231,7 @@ DPdataElec Data_to_Perms(const string& filename){
     int NumOfParticles = 0;
     DPdataElec Data;
     CrAnOps pmatrix;
+    vector<vector<bool>> Conjugates; // Determines whether a particular conjugate has been accounted for!
     ifstream inputFile(filename);
     
     if (!inputFile.is_open()) {
@@ -332,7 +333,7 @@ DPdataElec Data_to_Perms(const string& filename){
 
         // Determine if the permutation is found and if it is, check if the new diagonal is a part of the D_i: if not, add it to the list with the corresponding coefficient
         // if it already is in the list of diagonals just add the coefficients!
-
+        
         if(All_zeros(perm)){
             Data.Coeffs0 ;
             Data.D0 ;
@@ -349,12 +350,19 @@ DPdataElec Data_to_Perms(const string& filename){
             pair<bool , int> Pfound = Perm_found(perm , Data.Permutations);
             if(Pfound.first){
                 pair<bool , int> Dfound = Diag_found(diagonal , Data.Diagonals[Pfound.second]);
-                if(Dfound.first){
-                    Data.Coeffs[Pfound.second][Dfound.second] += coeff;
-                }
-                else{
+                if(!Dfound.first){
+                //     cout << "We're here! " << endl;
+                //     Data.Coeffs[Pfound.second][Dfound.second] += coeff;
+                // }
+                // else{
+                    Conjugates[Pfound.second].push_back(false);
                     Data.Coeffs[Pfound.second].push_back(coeff);
                     Data.Diagonals[Pfound.second].push_back(diagonal);
+                }
+                else{
+                    if(!Conjugates[Pfound.second][Dfound.second]){
+                        Data.Coeffs[Pfound.second][Dfound.second] += coeff;
+                    }
                 }
             }
             else{
@@ -369,8 +377,18 @@ DPdataElec Data_to_Perms(const string& filename){
                     //cout << "The conjugate coefficient is " << coeffconj << endl;
                     //cout << endl;
                     if(!Dfound.first){
+                        Conjugates[Pconjfound.second].push_back(true);
                         Data.Coeffs[Pconjfound.second].push_back(coeffconj);
                         Data.Diagonals[Pconjfound.second].push_back(diagonal);
+                    }
+                    else{
+                        cout << Dfound.second << endl;
+                        cout << Pconjfound.second << endl;
+                        //cout << Conjugates[Pconjfound.second][Dfound.second] << endl;
+                        cout << Conjugates[0][0] << endl;
+                        if(Conjugates[Pconjfound.second][Dfound.second]){
+                            Data.Coeffs[Pconjfound.second][Dfound.second] += coeff;
+                        }
                     }
                     /*
                     else if(coeffconj != Data.Coeffs[Pconjfound.second][Dfound.second]){
@@ -383,6 +401,7 @@ DPdataElec Data_to_Perms(const string& filename){
                     Data.Coeffs.push_back({coeff});
                     Data.Diagonals.push_back({diagonal});
                     Data.Permutations.push_back(perm);
+                    Conjugates.push_back({false});
                 }
             }
         }
@@ -546,8 +565,6 @@ int main(int argc , char* argv[]) {
     print_matrix(Transpose(PermMatrix) , "Permutations");
     cout << endl;
 
- 
-
     // Minimizing cycles lengths and printing them!
     for(int i=0; i < Cycles.size(); ++i){
         for(int j=0; j < Cycles[i].size(); ++j){
@@ -555,6 +572,21 @@ int main(int argc , char* argv[]) {
                 Cycles[i][j] = -1;
             }
         }
+    }
+
+    cout << endl;
+    cout << "The diagonals are: "  << endl;
+    for(int i=0; i <Diags.size(); i++){
+        print_matrix(Transpose(Diags[i]) , "Diagonals");
+        cout << endl;
+    }
+ 
+    cout << endl;
+    for(int k = 0; k < Cs.size(); k++){
+        for(int i=0; i < Cs[k].size(); i++){
+            cout << "The coefficients are " << Cs[0][i] << endl;
+        }
+        cout << endl;
     }
 
     //while(Cycle_minimize(Cycles));
