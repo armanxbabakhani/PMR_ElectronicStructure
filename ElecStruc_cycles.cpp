@@ -482,13 +482,9 @@ Matrix find_all_electronic_cycles(Matrix PermutationMatrices){
             }
         }
     }
-    cout << "Right before Modp nullspace computation! " << endl;
 
     Matrix NullspaceInt , Nullspace = Modp_nullspace(PermMatrixMod3 , 3);
 
-    cout << "Mod nullspace is computed! " << endl;
-
-    // Converting the 2 back to -1:
     for(int i=0; i < Nullspace.size(); ++i){
         for(int j=0; j < Nullspace[i].size(); ++j){
             if(Nullspace[i][j] == 2){
@@ -506,10 +502,14 @@ Matrix find_all_electronic_cycles(Matrix PermutationMatrices){
     }
 
     // Remove the wrong cycles:
-    NullspaceInt = Transpose(NullspaceInt);
-    remove_wrong_cycles(NullspaceInt , Transpose(PermutationMatrices));
-
-    return NullspaceInt;
+    if(Nullspace.size() > 0){
+        NullspaceInt = Transpose(NullspaceInt);
+        remove_wrong_cycles(NullspaceInt , Transpose(PermutationMatrices));
+        return NullspaceInt;
+    }
+    else{
+        return {{}};
+    }
 }
 
 int main(int argc , char* argv[]) {
@@ -538,7 +538,6 @@ int main(int argc , char* argv[]) {
     // vector<vector<int>> Cycles = Nullspace(PermMatrixDouble);
     vector<vector<int>> Cycles = find_all_electronic_cycles(PermMatrix);
     cout << "Nullspace computation is done! " << endl;
-    Print_Matrix(Cycles);
 
     //vector<vector<complex<double>>> Cs_conj = Conjugate_coeffs(Cs , Transpose(PermMatrixDouble));
 
@@ -559,7 +558,12 @@ int main(int argc , char* argv[]) {
     }
 
     //while(Cycle_minimize(Cycles));
-    print_matrix(Cycles, "cycles");
+    if(Cycles[0].size() > 0){
+        print_matrix(Cycles, "cycles");
+    }
+    else{
+        cout << "There are no fundamental cycles of length equal to or higher than 3!" << endl;
+    }
 
     return 0;
 }
