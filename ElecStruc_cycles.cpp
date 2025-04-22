@@ -2,6 +2,8 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <set>
+#include <numeric>
 #include <complex>
 #include <algorithm>
 #include "LinearAlgebra.h"
@@ -382,10 +384,7 @@ DPdataElec Data_to_Perms(const string& filename){
                         Data.Diagonals[Pconjfound.second].push_back(diagonal);
                     }
                     else{
-                        cout << Dfound.second << endl;
-                        cout << Pconjfound.second << endl;
                         //cout << Conjugates[Pconjfound.second][Dfound.second] << endl;
-                        cout << Conjugates[0][0] << endl;
                         if(Conjugates[Pconjfound.second][Dfound.second]){
                             Data.Coeffs[Pconjfound.second][Dfound.second] += coeff;
                         }
@@ -406,9 +405,58 @@ DPdataElec Data_to_Perms(const string& filename){
             }
         }
     }
+
+    for (int i = Data.Coeffs.size() - 1; i >= 0; --i) {
+        vector<complex<double>>& coeffs = Data.Coeffs[i];
+        NumberOps& diags = Data.Diagonals[i];
+        vector<bool> keep(coeffs.size(), true);
+        int keep_count = 0;
+
+        // Mark which coefficients to keep (non-zero)
+        for (int j = 0; j < coeffs.size(); ++j) {
+            if (abs(coeffs[j]) == 0.0) {
+                keep[j] = false;
+            } else {
+                ++keep_count;
+            }
+        }
+
+        if (keep_count == 0) {
+            // Entire permutation is zeroed out
+            Data.Coeffs.erase(Data.Coeffs.begin() + i);
+            Data.Diagonals.erase(Data.Diagonals.begin() + i);
+            Data.Permutations.erase(Data.Permutations.begin() + i);
+        } else {
+            // Filter out zero coefficients and their diagonals
+            vector<complex<double>> new_coeffs;
+            NumberOps new_diags;
+            for (int j = 0; j < keep.size(); ++j) {
+                if (keep[j]) {
+                    new_coeffs.push_back(coeffs[j]);
+                    new_diags.push_back(diags[j]);
+                }
+            }
+            Data.Coeffs[i] = new_coeffs;
+            Data.Diagonals[i] = new_diags;
+        }
+    }
+
+    // Cleanup for Coeffs0 and D0
+    vector<complex<double>> new_coeffs0;
+    vector<vector<int>> new_D0;
+
+    for (size_t i = 0; i < Data.Coeffs0.size(); ++i) {
+        if (abs(Data.Coeffs0[i]) != 0.0) {
+            new_coeffs0.push_back(Data.Coeffs0[i]);
+            new_D0.push_back(Data.D0[i]);
+        }
+    }
+    Data.Coeffs0 = new_coeffs0;
+    Data.D0 = new_D0;
+
     inputFile.close();
     return Data;
-}
+    }
 
 int determinant(const Matrix& matrix) {
     int n = matrix.size();
@@ -445,7 +493,7 @@ int determinant(const Matrix& matrix) {
     return det;
 }
 
-void remove_wrong_cycles(vector<vector<int>> &NullspaceInt, const vector<vector<int>> &PermutationMatrices) {
+void remove_wrong_cycles(vector<vector<int>> &NullspaceInt, const vector<vector<double>> &PermutationMatrices) {
     // Ensure dimensions match between NullspaceInt and PermutationMatrices
     cout << "The dimension of NullspaceInt: " << NullspaceInt.size() << " and " << NullspaceInt[0].size() << endl;
 
@@ -463,11 +511,6 @@ void remove_wrong_cycles(vector<vector<int>> &NullspaceInt, const vector<vector<
         vector<int> sumResult(PermutationMatrices[0].size(), 0);
 
         for (size_t i = 0; i < nullVec.size(); ++i) {
-            // Check if the coefficient in nullVec is 0, -1, or 1
-            if (nullVec[i] != 0 && nullVec[i] != 1 && nullVec[i] != -1) {
-                cerr << "Invalid coefficient found in NullspaceInt." << endl;
-                continue;
-            }
 
             // Add the scaled PermutationMatrices[i] to sumResult
             for (size_t j = 0; j < PermutationMatrices[i].size(); ++j) {
@@ -492,44 +535,82 @@ Matrix find_all_electronic_cycles(Matrix PermutationMatrices){
     // The permutation matrices contain 1 , 0 , or -1 , so we will convert this into mod 3 linear algebra
     //  by replacing the -1 with 2
 
-    // Replacing -1 with 2
-    Matrix PermMatrixMod3 = PermutationMatrices;
-    for(int i=0; i < PermutationMatrices.size(); ++i){
-        for(int j=0; j < PermutationMatrices[i].size(); ++j){
-            if(PermutationMatrices[i][j] == -1){
-                PermMatrixMod3[i][j] = 2;
-            }
+    vector<vector<double>> PMdouble;
+    PMdouble.reserve(PermutationMatrices.size());
+
+    for (const auto& row : PermutationMatrices) {
+        std::vector<double> doubleRow;
+        doubleRow.reserve(row.size());
+        for (int val : row) {
+            doubleRow.push_back(static_cast<double>(val));
         }
+        PMdouble.push_back(std::move(doubleRow));
     }
 
-    Matrix NullspaceInt , Nullspace = Modp_nullspace(PermMatrixMod3 , 3);
+    Matrix nullspace = Nullspace(PMdouble);
 
-    for(int i=0; i < Nullspace.size(); ++i){
-        for(int j=0; j < Nullspace[i].size(); ++j){
-            if(Nullspace[i][j] == 2){
-                Nullspace[i][j] = -1;
+    for(int i=0; i < nullspace.size(); ++i){
+        for(int j=0; j < nullspace[i].size(); ++j){
+            if(nullspace[i][j] == 2){
+                nullspace[i][j] = -1;
             }
-        }
-    }
-
-    for(int i = 0; i < Nullspace.size() ; i++){
-        if(CheckOnesInt(Nullspace[i])){
-            vector<int> nullint = Nullspace[i];
-            //vector<int> nullint(nullspace[i].begin() , nullspace[i].end());
-            NullspaceInt.push_back(nullint);
         }
     }
 
     // Remove the wrong cycles:
-    if(Nullspace.size() > 0){
-        NullspaceInt = Transpose(NullspaceInt);
-        remove_wrong_cycles(NullspaceInt , Transpose(PermutationMatrices));
-        return NullspaceInt;
+    if(nullspace.size() > 0){
+        nullspace = Transpose(nullspace);
+        remove_wrong_cycles(nullspace , Transpose(PMdouble));
+        return nullspace;
     }
     else{
         return {{}};
     }
 }
+
+
+// Matrix find_all_electronic_cycles_mod3(Matrix PermutationMatrices){
+//     // The permutation matrices contain 1 , 0 , or -1 , so we will convert this into mod 3 linear algebra
+//     //  by replacing the -1 with 2
+
+//     // Replacing -1 with 2
+//     Matrix PermMatrixMod3 = PermutationMatrices;
+//     for(int i=0; i < PermutationMatrices.size(); ++i){
+//         for(int j=0; j < PermutationMatrices[i].size(); ++j){
+//             if(PermutationMatrices[i][j] == -1){
+//                 PermMatrixMod3[i][j] = 2;
+//             }
+//         }
+//     }
+
+//     Matrix NullspaceInt , Nullspace = Modp_nullspace(PermMatrixMod3 , 3);
+
+//     for(int i=0; i < Nullspace.size(); ++i){
+//         for(int j=0; j < Nullspace[i].size(); ++j){
+//             if(Nullspace[i][j] == 2){
+//                 Nullspace[i][j] = -1;
+//             }
+//         }
+//     }
+
+//     for(int i = 0; i < Nullspace.size() ; i++){
+//         if(CheckOnesInt(Nullspace[i])){
+//             vector<int> nullint = Nullspace[i];
+//             //vector<int> nullint(nullspace[i].begin() , nullspace[i].end());
+//             NullspaceInt.push_back(nullint);
+//         }
+//     }
+
+//     // Remove the wrong cycles:
+//     if(Nullspace.size() > 0){
+//         NullspaceInt = Transpose(NullspaceInt);
+//         remove_wrong_cycles(NullspaceInt , Transpose(PermutationMatrices));
+//         return NullspaceInt;
+//     }
+//     else{
+//         return {{}};
+//     }
+// }
 
 int main(int argc , char* argv[]) {
 
@@ -540,7 +621,7 @@ int main(int argc , char* argv[]) {
 
     string filename(argv[1]);
     ElecData = Data_to_Perms(filename);
-    vector<vector<double>> PermMatrixDouble = Transpose(ElecData.Permutations);
+    vector<vector<double>> PermMatrixDouble = ElecData.Permutations;
     vector<vector<int>> PermMatrix(PermMatrixDouble.size() , vector<int>(PermMatrixDouble[0].size() , 0));
     
     for (size_t i = 0; i < PermMatrixDouble.size(); ++i) {
@@ -555,38 +636,28 @@ int main(int argc , char* argv[]) {
     vector<complex<double>> C0 = ElecData.Coeffs0;
     cout << "Starting to compute the nullspace! " << endl;
     // vector<vector<int>> Cycles = Nullspace(PermMatrixDouble);
-    vector<vector<int>> Cycles = find_all_electronic_cycles(PermMatrix);
+    vector<vector<int>> Cycles = find_all_electronic_cycles(Transpose(PermMatrix));
     cout << "Nullspace computation is done! " << endl;
 
     //vector<vector<complex<double>>> Cs_conj = Conjugate_coeffs(Cs , Transpose(PermMatrixDouble));
 
     cout << endl;
     cout << "The permutations are: "  << endl;
-    print_matrix(Transpose(PermMatrix) , "Permutations");
+    print_matrix(PermMatrix , "Permutations");
     cout << endl;
 
-    // Minimizing cycles lengths and printing them!
-    for(int i=0; i < Cycles.size(); ++i){
-        for(int j=0; j < Cycles[i].size(); ++j){
-            if(Cycles[i][j] == 2){
-                Cycles[i][j] = -1;
-            }
-        }
-    }
-
-    cout << endl;
-    cout << "The diagonals are: "  << endl;
-    for(int i=0; i <Diags.size(); i++){
-        print_matrix(Transpose(Diags[i]) , "Diagonals");
-        cout << endl;
-    }
+    // cout << "The diagonals are: "  << endl;
+    // for(int i=0; i < Diags.size(); i++){
+    //     print_matrix(Diags[i] , "Diagonals");
+    //     cout << endl;
+    // }
  
     cout << endl;
     for(int k = 0; k < Cs.size(); k++){
         for(int i=0; i < Cs[k].size(); i++){
             cout << "The coefficients are " << Cs[0][i] << endl;
+            cout << endl;
         }
-        cout << endl;
     }
 
     //while(Cycle_minimize(Cycles));

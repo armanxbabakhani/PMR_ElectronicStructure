@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <algorithm>
 
 using namespace std;
 typedef vector<vector<int>> Matrix;
@@ -51,27 +52,6 @@ void Gauss_Elim(vector<vector<double>>& A) {
         }
         lead++;
     }
-}
-
-// Function to find the nullspace basis of a matrix
-vector<vector<double>> Nullspace_old(vector<vector<double>> matrix) {
-    // Create an augmented matrix [A | I]
-    int rows = matrix.size();
-    int cols = matrix[0].size();
-    vector<vector<double>> AugmentedMatrix = matrix;
-
-    // Apply Gaussian elimination with back-substitution to the augmented matrix
-    Gauss_Elim(AugmentedMatrix);
-
-    // Extract the nullspace basis from the right side of the augmented matrix
-    vector<vector<double>> NullspaceBasis(rows, vector<double>(rows, 0));
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < rows; ++j) {
-            NullspaceBasis[j][i] = -AugmentedMatrix[j][cols + i];
-        }
-    }
-
-    return NullspaceBasis;
 }
 
 template<typename T>
@@ -243,53 +223,101 @@ Matrix Modp_nullspace(const Matrix& A, int p) {
     return Transpose(nullspace);
 }
 
-vector<vector<int>> Nullspace(vector<vector<double>> A) {
-    vector<vector<double>> nullspace;
-    vector<vector<int>> nullspaceInt;
-    int colsA = A[0].size() , rowsA = A.size() , rank=0 , nullspaceDim;
-    vector<int> PivotCols , PivotRows;
+// Function to compute LCM of two numbers
+int lcm(int a, int b) {
+    return abs(a * b) / gcd(a, b);
+}
 
+// Function to compute LCM of denominators in a vector of doubles
+int lcm_of_denominators(const vector<double>& vec) {
+    int denom_lcm = 1;
+    for (double val : vec) {
+        double frac_part = val - static_cast<int>(val);
+        if (fabs(frac_part) > 1e-8) {
+            int denom = 1;
+            while (fabs(round(val * denom) - val * denom) > 1e-6 && denom < 10000) {
+                denom++;
+            }
+            denom_lcm = lcm(denom_lcm, denom);
+        }
+    }
+    return denom_lcm;
+}
+
+// Convert vector<double> to scaled integer vector
+vector<int> convert_to_integer_vector(const vector<double>& vec) {
+    int scale = lcm_of_denominators(vec);
+    vector<int> result;
+    for (double val : vec) {
+        result.push_back(static_cast<int>(round(val * scale)));
+    }
+    return result;
+}
+
+// Remove duplicates from a list of integer vectors
+vector<vector<int>> remove_duplicates(const vector<vector<int>>& vecs) {
+    set<vector<int>> unique_set(vecs.begin(), vecs.end());
+    return vector<vector<int>>(unique_set.begin(), unique_set.end());
+}
+
+
+vector<vector<int>> Nullspace(vector<vector<double>> A) {
+    vector<vector<int>> nullspaceInt;
+    vector<vector<double>> nullspace;
+    int colsA = A[0].size(), rowsA = A.size();
+    vector<int> PivotCols, PivotRows;
+
+    // Step 1: Gaussian Elimination
     Gauss_Elim(A);
-    //Print_Matrix(A);
-    //Determine pivot columns:
-    for(int i = 0; i < rowsA; i++){
-        for(int j = 0; j < colsA; j++){
-            if(abs(A[i][j]-1) < 1E-6){
+
+    // Step 2: Identify pivot columns
+    for (int i = 0; i < rowsA; i++) {
+        for (int j = 0; j < colsA; j++) {
+            if (abs(A[i][j] - 1.0) < 1E-6) {
                 PivotCols.push_back(j);
                 PivotRows.push_back(i);
-                rank++;
                 break;
             }
         }
     }
 
-    nullspaceDim = colsA - rank;
-
-    for(int i=0; i < colsA; i++){
-        if(!Num_found_inVec(i, PivotCols)){ 
-            vector<double> BasisVec( A[0].size() , 0 );
-            BasisVec[i] = 1.0;
-            // Mark the rows that have a non-zero entry in this column:
-            for(int k = 0; k < rank; k++){
-                BasisVec[PivotCols[k]] = -1.0*A[PivotRows[k]][i];
+    // Step 3: Identify free variables and build rational nullspace
+    for (int j = 0; j < colsA; j++) {
+        if (!Num_found_inVec(j, PivotCols)) {
+            vector<double> basis(colsA, 0.0);
+            basis[j] = 1.0;
+            for (int k = 0; k < PivotCols.size(); k++) {
+                basis[PivotCols[k]] = -A[PivotRows[k]][j];
             }
-            nullspace.push_back(BasisVec);
-            //cout << "Basis Vector is: " << endl;
-            //Print_Matrix(vector<vector<double>> {BasisVec});
-            cout << endl;
+            nullspace.push_back(basis);
         }
     }
-    //nullspace = Transpose(nullspace);
 
-    for(int i = 0; i < nullspace.size() ; i++){
-        if(CheckOnes(nullspace[i])){
-            vector<int> nullint = Round_toint(nullspace[i]);
-            //vector<int> nullint(nullspace[i].begin() , nullspace[i].end());
-            nullspaceInt.push_back(nullint);
+    // Step 4: Convert each basis vector to scaled integers
+    for (const auto& vec : nullspace) {
+        int lcm_denom = 1;
+        for (double val : vec) {
+            double frac_part = val - round(val);
+            if (abs(frac_part) > 1e-8) {
+                int denom = 1;
+                while (abs(round(val * denom) - val * denom) > 1e-6 && denom < 10000)
+                    denom++;
+                lcm_denom = lcm(lcm_denom, denom);
+            }
         }
+
+        vector<int> int_vec;
+        for (double val : vec) {
+            int_vec.push_back(static_cast<int>(round(val * lcm_denom)));
+        }
+        nullspaceInt.push_back(int_vec);
     }
-    return Transpose(nullspaceInt);
+
+    // Step 5: Remove duplicates
+    set<vector<int>> unique_basis(nullspaceInt.begin(), nullspaceInt.end());
+    return Transpose(vector<vector<int>>(unique_basis.begin(), unique_basis.end()));
 }
+
 
 vector<int> Vec_add(vector<int> v1 , vector<int> v2){
     if(v1.size() != v2.size()){
