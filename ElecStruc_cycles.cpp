@@ -532,9 +532,6 @@ void remove_wrong_cycles(vector<vector<int>> &NullspaceInt, const vector<vector<
 
 
 Matrix find_all_electronic_cycles(Matrix PermutationMatrices){
-    // The permutation matrices contain 1 , 0 , or -1 , so we will convert this into mod 3 linear algebra
-    //  by replacing the -1 with 2
-
     vector<vector<double>> PMdouble;
     PMdouble.reserve(PermutationMatrices.size());
 
@@ -549,24 +546,29 @@ Matrix find_all_electronic_cycles(Matrix PermutationMatrices){
 
     Matrix nullspace = Nullspace(PMdouble);
 
-    for(int i=0; i < nullspace.size(); ++i){
-        for(int j=0; j < nullspace[i].size(); ++j){
-            if(nullspace[i][j] == 2){
-                nullspace[i][j] = -1;
-            }
-        }
-    }
+    //return Transpose(nullspace);
+    return nullspace;
+}
+
+
+// for(int i=0; i < nullspace.size(); ++i){
+    //     for(int j=0; j < nullspace[i].size(); ++j){
+    //         if(nullspace[i][j] == 2){
+    //             nullspace[i][j] = -1;
+    //         }
+    //     }
+    // }
 
     // Remove the wrong cycles:
-    if(nullspace.size() > 0){
-        nullspace = Transpose(nullspace);
-        remove_wrong_cycles(nullspace , Transpose(PMdouble));
-        return nullspace;
-    }
-    else{
-        return {{}};
-    }
-}
+    // if(nullspace.size() > 0){
+    //     nullspace = Transpose(nullspace);
+    //     remove_wrong_cycles(nullspace , Transpose(PMdouble));
+    //     return nullspace;
+    // }
+    // else{
+    //     return {{}};
+    // }
+
 
 
 // Matrix find_all_electronic_cycles_mod3(Matrix PermutationMatrices){
@@ -661,7 +663,8 @@ int main(int argc , char* argv[]) {
     }
 
     //while(Cycle_minimize(Cycles));
-    if(Cycles[0].size() > 0){
+    //cout << "cycles[0] is " << Cycles.size() << endl;
+    if(Cycles.size() > 0){
         print_matrix(Cycles, "cycles");
     }
     else{

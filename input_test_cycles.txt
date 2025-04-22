@@ -1,0 +1,16 @@
+Starting to compute the nullspace! 
+Nullspace computation is done! 
+
+The permutations are: 
+Permutations[0] = 0  0  -1  1  
+Permutations[1] = -1  1  1  -1  
+Permutations[2] = 1  -1  1  -1  
+
+
+The coefficients are (1,0)
+
+The coefficients are (1,0)
+
+The coefficients are (1,0)
+
+cycles[0] = 2  1  1  

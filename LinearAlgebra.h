@@ -18,38 +18,39 @@ void Print_Matrix(const vector<vector<T>>& matrix) {
 }
 
 void Gauss_Elim(vector<vector<double>>& A) {
-    int rowsA = A.size() , colsA = A[0].size() , lead = 0;
+    int rows = A.size();
+    int cols = A[0].size();
+    int lead = 0;
 
-    for (int r = 0; r < rowsA; r++) {
-        if (lead >= colsA) {
-            break;
-        }
+    for (int r = 0; r < rows; ++r) {
+        if (lead >= cols) break;
+
         int i = r;
-        while (A[i][lead] == 0) {
+        while (fabs(A[i][lead]) < 1e-10) {
             i++;
-            if (i == rowsA) {
+            if (i == rows) {
                 i = r;
                 lead++;
-                if (lead == colsA) {
-                    return;
-                }
+                if (lead == cols) return;
             }
         }
-        
-        swap(A[i], A[r]);
 
-        int lv = A[r][lead]; // Multiplier is the number that multiplies the leading term to 1.
-        for (int j = 0; j < colsA; j++) {
-            A[r][j] = A[r][j]/lv;
+        std::swap(A[i], A[r]);
+
+        double lv = A[r][lead];
+        for (int j = 0; j < cols; ++j) {
+            A[r][j] /= lv;
         }
-        for (int i = 0; i < rowsA; i++) {
+
+        for (int i = 0; i < rows; ++i) {
             if (i != r) {
-                int lv2 = A[i][lead];
-                for (int j = 0; j < colsA; j++) {
-                    A[i][j] -= (A[r][j] * lv2);
+                double lv2 = A[i][lead];
+                for (int j = 0; j < cols; ++j) {
+                    A[i][j] -= lv2 * A[r][j];
                 }
             }
         }
+
         lead++;
     }
 }
@@ -315,7 +316,7 @@ vector<vector<int>> Nullspace(vector<vector<double>> A) {
 
     // Step 5: Remove duplicates
     set<vector<int>> unique_basis(nullspaceInt.begin(), nullspaceInt.end());
-    return Transpose(vector<vector<int>>(unique_basis.begin(), unique_basis.end()));
+    return vector<vector<int>>(unique_basis.begin(), unique_basis.end());
 }
 
 
